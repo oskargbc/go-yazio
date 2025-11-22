@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"net/http"
+	"time"
 
 	"github.com/controlado/go-yazio/internal/application"
 	"github.com/controlado/go-yazio/internal/infra/client"
@@ -86,4 +87,41 @@ func (a *API) Login(ctx context.Context, cred application.Credentials) (*User, e
 	}
 
 	return dto.toUser(a.client)
+}
+
+// NewUserWithTokens creates a new [*User] instance using the provided
+// access token, refresh token, and expiration time.
+//
+// This method allows you to create a User without going through
+// the login flow, useful when you already have valid tokens.
+//
+// It returns an error if the access token or refresh token is empty.
+func (a *API) NewUserWithTokens(accessToken, refreshToken string, expiresAt time.Time) (*User, error) {
+	if accessToken == "" {
+		return nil, fmt.Errorf("access token cannot be empty")
+	}
+	if refreshToken == "" {
+		return nil, fmt.Errorf("refresh token cannot be empty")
+	}
+
+	return &User{
+		client: a.client,
+		token: &Token{
+			expiresAt: expiresAt,
+			access:    accessToken,
+			refresh:   refreshToken,
+		},
+	}, nil
+}
+
+// NewUserWithTokensAndExpiresIn creates a new [*User] instance using the provided
+// access token, refresh token, and expiration duration.
+//
+// This is a convenience method that calculates the expiration time
+// by adding expiresIn to the current time.
+//
+// It returns an error if the access token or refresh token is empty.
+func (a *API) NewUserWithTokensAndExpiresIn(accessToken, refreshToken string, expiresIn time.Duration) (*User, error) {
+	expiresAt := time.Now().Add(expiresIn)
+	return a.NewUserWithTokens(accessToken, refreshToken, expiresAt)
 }
